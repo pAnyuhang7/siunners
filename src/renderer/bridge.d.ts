@@ -3,6 +3,7 @@ export {};
 declare global {
   interface PetSettings {
     model: string;
+    baseUrl: string;
     apiKeyConfigured: boolean;
     secureStorageAvailable: boolean;
   }
@@ -14,7 +15,7 @@ declare global {
   interface Window {
     momo?: {
       getSettings: () => Promise<PetSettings>;
-      saveSettings: (value: { apiKey: string; model: string }) => Promise<PetSettings>;
+      saveSettings: (value: { apiKey: string; model: string; baseUrl: string }) => Promise<PetSettings>;
       clearApiKey: () => Promise<PetSettings>;
       sendMessage: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<AssistantReply>;
       resolveAction: (requestId: string, approved: boolean) => Promise<AssistantReply>;

@@ -6,8 +6,9 @@ const SYSTEM_MESSAGE = {
   content: '你是一个友好、简洁的中文桌面宠物。只有在用户明确要求时才请求打开应用。你只能通过 open_application 请求打开可用清单中的应用；不能声称已经执行，必须等待用户确认和工具结果。'
 };
 
-async function requestAssistant(messages, { apiKey, model }) {
-  const response = await fetch(`${API_BASE_URL}/chat/completions`, {
+async function requestAssistant(messages, { apiKey, model, baseUrl }) {
+  const root = typeof baseUrl === 'string' && baseUrl ? baseUrl.replace(/\/+$/, '') : API_BASE_URL;
+  const response = await fetch(`${root}/chat/completions`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${apiKey}`,

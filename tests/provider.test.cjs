@@ -82,3 +82,21 @@ test('maps online authentication failures without returning secret response cont
     (error) => error.message === '在线 AI 请求失败（HTTP 401），请检查 API Key。'
   );
 });
+
+test('sends requests to a custom endpoint when configured', async (context) => {
+  let request;
+  context.mock.method(globalThis, 'fetch', async (...args) => {
+    request = args;
+    return response({ choices: [{ message: { content: '你好！' } }] });
+  });
+
+  const result = await requestAssistant([{ role: 'user', content: '你好' }], {
+    apiKey: 'test-key',
+    model: 'llama3',
+    baseUrl: 'http://127.0.0.1:11434/v1/'
+  });
+
+  assert.deepEqual(result, { kind: 'message', text: '你好！' });
+  assert.equal(request[0], 'http://127.0.0.1:11434/v1/chat/completions');
+  assert.equal(JSON.parse(request[1].body).model, 'llama3');
+});

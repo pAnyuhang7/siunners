@@ -13,7 +13,11 @@ function describeHttpFailure(status) {
   return '请稍后重试';
 }
 
-async function transcribeAudio(audio, { apiKey }) {
+function resolveRoot(baseUrl) {
+  return typeof baseUrl === 'string' && baseUrl ? baseUrl.replace(/\/+$/, '') : API_BASE_URL;
+}
+
+async function transcribeAudio(audio, { apiKey, baseUrl }) {
   if (!(audio instanceof Uint8Array) || audio.length === 0) {
     throw new Error('没有录到声音，请再试一次。');
   }
@@ -25,7 +29,7 @@ async function transcribeAudio(audio, { apiKey }) {
   form.append('file', new Blob([audio], { type: 'audio/webm' }), 'speech.webm');
   form.append('model', TRANSCRIBE_MODEL);
 
-  const response = await fetch(`${API_BASE_URL}/audio/transcriptions`, {
+  const response = await fetch(`${resolveRoot(baseUrl)}/audio/transcriptions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}` },
     body: form,
@@ -43,12 +47,12 @@ async function transcribeAudio(audio, { apiKey }) {
   return { text };
 }
 
-async function synthesizeSpeech(text, { apiKey }) {
+async function synthesizeSpeech(text, { apiKey, baseUrl }) {
   if (typeof text !== 'string' || !text.trim()) {
     throw new Error('没有需要播报的内容。');
   }
 
-  const response = await fetch(`${API_BASE_URL}/audio/speech`, {
+  const response = await fetch(`${resolveRoot(baseUrl)}/audio/speech`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${apiKey}`,

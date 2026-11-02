@@ -114,3 +114,20 @@ test('rejects empty speech audio', async (context) => {
     (error) => error.message === '语音播报返回了空音频。'
   );
 });
+
+test('sends voice requests to a custom endpoint when configured', async (context) => {
+  const urls = [];
+  context.mock.method(globalThis, 'fetch', async (url) => {
+    urls.push(String(url));
+    if (String(url).endsWith('/audio/transcriptions')) return jsonResponse({ text: '你好' });
+    return { ok: true, status: 200, arrayBuffer: async () => Uint8Array.from([1]).buffer };
+  });
+
+  const credentials = { apiKey: 'test-key', baseUrl: 'http://127.0.0.1:8000/v1' };
+  await transcribeAudio(new Uint8Array([1]), credentials);
+  await synthesizeSpeech('你好', credentials);
+  assert.deepEqual(urls, [
+    'http://127.0.0.1:8000/v1/audio/transcriptions',
+    'http://127.0.0.1:8000/v1/audio/speech'
+  ]);
+});

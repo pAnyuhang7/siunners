@@ -85,7 +85,7 @@ ipcMain.handle('settings:get', (event) => { assertTrustedSender(event); return s
 ipcMain.handle('settings:save', (event, value) => {
   assertTrustedSender(event);
   if (!value || typeof value !== 'object') throw new Error('设置内容无效。');
-  return settingsStore.save({ apiKey: value.apiKey, model: value.model });
+  return settingsStore.save({ apiKey: value.apiKey, model: value.model, baseUrl: value.baseUrl });
 });
 ipcMain.handle('settings:clear-key', (event) => { assertTrustedSender(event); return settingsStore.clearApiKey(); });
 ipcMain.handle('window:hide', (event) => { assertTrustedSender(event); return mainWindow?.hide(); });

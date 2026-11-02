@@ -15,6 +15,7 @@ type PetMessage = {
 
 const defaultSettings: PetSettings = {
   model: 'gpt-6.1-sol',
+  baseUrl: 'https://docode.cc/v1',
   apiKeyConfigured: false,
   secureStorageAvailable: false
 };
@@ -67,6 +68,7 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(defaultSettings.model);
+  const [baseUrl, setBaseUrl] = useState(defaultSettings.baseUrl);
   const [saveState, setSaveState] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -90,6 +92,7 @@ function App() {
     window.momo?.getSettings().then((next) => {
       setSettings(next);
       setModel(next.model);
+      setBaseUrl(next.baseUrl);
       setOnline(next.apiKeyConfigured);
     }).catch(() => setOnline(false));
   }, []);
@@ -272,9 +275,10 @@ function App() {
       return;
     }
     try {
-      const next = await window.momo.saveSettings({ apiKey, model });
+      const next = await window.momo.saveSettings({ apiKey, model, baseUrl });
       setSettings(next);
       setModel(next.model);
+      setBaseUrl(next.baseUrl);
       setApiKey('');
       setOnline(next.apiKeyConfigured);
       setSaveState('已保存');
@@ -419,12 +423,14 @@ function App() {
               <button className="icon-button" type="button" title="关闭设置" aria-label="关闭设置" onClick={() => setSettingsOpen(false)}><X size={18} /></button>
             </header>
             <form onSubmit={(event) => void saveSettings(event)}>
+              <label className="field-label" htmlFor="base-url">请求地址</label>
+              <input id="base-url" className="text-field" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={defaultSettings.baseUrl} autoComplete="off" spellCheck={false} />
+              <p className="endpoint-note">OpenAI 兼容接口根地址，聊天与语音都走此地址，请求发送到「根地址/chat/completions」。留空恢复默认；也可填写本地服务如 http://127.0.0.1:11434/v1（Ollama）。服务商官网：docode.cc</p>
               <label className="field-label" htmlFor="model">模型</label>
-              <input id="model" className="text-field" value={model} onChange={(event) => setModel(event.target.value)} placeholder="gpt-6.1-sol" autoComplete="off" />
+              <input id="model" className="text-field" value={model} onChange={(event) => setModel(event.target.value)} placeholder="gpt-6.1-sol" autoComplete="off" spellCheck={false} />
               <label className="field-label" htmlFor="api-key">API Key</label>
               <input id="api-key" className="text-field" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={settings.apiKeyConfigured ? '已保存，留空则保持不变' : 'sk-…'} autoComplete="new-password" />
               <div className="secure-note"><ShieldCheck size={15} /><span>{settings.secureStorageAvailable ? '凭据将加密保存在此 Windows 用户账户中' : '当前系统不支持安全凭据存储'}</span></div>
-              <p className="endpoint-note">API 请求地址：docode.cc/v1/chat/completions</p>
               {saveState && <p className="save-state" role="status">{saveState}</p>}
               <div className="modal-actions">
                 {settings.apiKeyConfigured && <button className="text-action remove-key" type="button" onClick={() => void clearKey()}>移除密钥</button>}
