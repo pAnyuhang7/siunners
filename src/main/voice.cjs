@@ -7,11 +7,16 @@ const TRANSCRIBE_MODEL = 'whisper-1';
 const SPEECH_MODEL = 'tts-1';
 const SPEECH_VOICE = 'alloy';
 
-function describeHttpFailure(status) {
+function describeHttpFailure(status, payload) {
   if (status === 401) return '请检查 API Key';
   if (status === 429) return '服务限流或额度不足';
+  if (status === 402) {
+    const detail = wrappedErrorDetail(payload);
+    return detail ? `账户欠费（${detail}），请充值后重试` : '账户余额不足或已欠费，请充值后重试';
+  }
   if (status === 404) return '该服务没有这个语音接口，请确认语音地址支持 OpenAI 兼容 /audio 接口';
-  return '请稍后重试';
+  const detail = wrappedErrorDetail(payload);
+  return detail ? `服务返回错误：${detail}` : '请稍后重试';
 }
 
 function resolveRoot(baseUrl, voiceBaseUrl) {
@@ -46,7 +51,7 @@ async function transcribeAudio(audio, { apiKey, voiceApiKey, baseUrl, voiceBaseU
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(`语音识别失败（HTTP ${response.status}），${describeHttpFailure(response.status)}。`);
+    throw new Error(`语音识别失败（HTTP ${response.status}），${describeHttpFailure(response.status, payload)}。`);
   }
 
   const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
@@ -80,8 +85,14 @@ async function synthesizeSpeech(text, { apiKey, voiceApiKey, baseUrl, voiceBaseU
     signal: AbortSignal.timeout(60_000)
   });
 
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
   if (!response.ok) {
-    throw new Error(`语音播报失败（HTTP ${response.status}），${describeHttpFailure(response.status)}。`);
+    throw new Error(`语音播报失败（HTTP ${response.status}），${describeHttpFailure(response.status, payload)}。`);
   }
 
   const audio = Buffer.from(await response.arrayBuffer());

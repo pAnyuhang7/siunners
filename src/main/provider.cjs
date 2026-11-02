@@ -6,14 +6,29 @@ const SYSTEM_MESSAGE = {
   content: '你是一个友好、简洁的中文桌面宠物。只有在用户明确要求时才请求打开应用。你只能通过 open_application 请求打开可用清单中的应用；不能声称已经执行，必须等待用户确认和工具结果。'
 };
 
+function providerErrorDetail(payload) {
+  const candidates = [payload?.error?.message, payload?.msg, payload?.message];
+  const detail = candidates.find((value) => typeof value === 'string' && value.trim());
+  return detail ? detail.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+}
+
 function describeUnrecognized(payload) {
-  const detail = typeof payload?.error?.message === 'string'
-    ? payload.error.message.replace(/\s+/g, ' ').trim().slice(0, 200)
-    : '';
+  const detail = providerErrorDetail(payload);
   const hint = '请确认请求地址是 OpenAI 兼容接口（根地址 + /chat/completions），而不是其他协议。';
   return detail
     ? `在线服务返回了无法识别的结果：${detail}。${hint}`
     : `在线 AI 返回了无法识别的结果。${hint}`;
+}
+
+function describeHttpFailure(status, payload) {
+  if (status === 401) return '请检查 API Key';
+  if (status === 429) return '服务限流或额度不足';
+  if (status === 402) {
+    const detail = providerErrorDetail(payload);
+    return detail ? `账户欠费（${detail}），请充值后重试` : '账户余额不足或已欠费，请充值后重试';
+  }
+  const detail = providerErrorDetail(payload);
+  return detail ? `服务返回错误：${detail}` : '请稍后重试';
 }
 
 async function requestAssistant(messages, { apiKey, model, baseUrl }) {
@@ -37,12 +52,7 @@ async function requestAssistant(messages, { apiKey, model, baseUrl }) {
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const reason = response.status === 401
-      ? '请检查 API Key'
-      : response.status === 429
-        ? '服务限流或额度不足'
-        : '请稍后重试';
-    throw new Error(`在线 AI 请求失败（HTTP ${response.status}），${reason}。`);
+    throw new Error(`在线 AI 请求失败（HTTP ${response.status}），${describeHttpFailure(response.status, payload)}。`);
   }
 
   const message = payload?.choices?.[0]?.message;

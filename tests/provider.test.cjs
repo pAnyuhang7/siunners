@@ -106,7 +106,18 @@ test('surfaces the provider error inside an HTTP 200 envelope and points at the 
 
   await assert.rejects(
     requestAssistant([{ role: 'user', content: 'hello' }], { apiKey: 'test-key', model: 'm' }),
-    (error) => error.message === '在线 AI 返回了无法识别的结果。请确认请求地址是 OpenAI 兼容接口（根地址 + /chat/completions），而不是其他协议。'
+    (error) => error.message.includes('404 NOT_FOUND') && error.message.includes('OpenAI 兼容接口')
+  );
+});
+
+test('maps payment-required errors with the provider detail', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => response({
+    code: 20015, message: '账户余额不足'
+  }, 402));
+
+  await assert.rejects(
+    requestAssistant([{ role: 'user', content: 'hello' }], { apiKey: 'test-key', model: 'm' }),
+    (error) => error.message === '在线 AI 请求失败（HTTP 402），账户欠费（账户余额不足），请充值后重试。'
   );
 });
 

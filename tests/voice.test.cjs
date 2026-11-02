@@ -209,6 +209,21 @@ test('reports a missing voice endpoint clearly', async (context) => {
   );
 });
 
+test('maps payment-required voice errors with the provider detail', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => jsonResponse({
+    code: 20015, message: '账户余额不足'
+  }, 402));
+
+  await assert.rejects(
+    transcribeAudio(new Uint8Array([1]), { apiKey: 'test-key' }),
+    (error) => error.message === '语音识别失败（HTTP 402），账户欠费（账户余额不足），请充值后重试。'
+  );
+  await assert.rejects(
+    synthesizeSpeech('你好', { apiKey: 'test-key' }),
+    (error) => error.message === '语音播报失败（HTTP 402），账户欠费（账户余额不足），请充值后重试。'
+  );
+});
+
 test('surfaces plain wrapped error fields from transcriptions', async (context) => {
   context.mock.method(globalThis, 'fetch', async () => jsonResponse({
     code: 500, msg: '404 NOT_FOUND', success: false
