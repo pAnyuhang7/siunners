@@ -1,0 +1,76 @@
+const { API_BASE_URL } = require('./provider.cjs');
+const { MAX_MESSAGE_LENGTH } = require('./conversation.cjs');
+
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+const MAX_SPEECH_CHARS = 4000;
+const TRANSCRIBE_MODEL = 'whisper-1';
+const SPEECH_MODEL = 'tts-1';
+const SPEECH_VOICE = 'alloy';
+
+function describeHttpFailure(status) {
+  if (status === 401) return '请检查 API Key';
+  if (status === 429) return '服务限流或额度不足';
+  return '请稍后重试';
+}
+
+async function transcribeAudio(audio, { apiKey }) {
+  if (!(audio instanceof Uint8Array) || audio.length === 0) {
+    throw new Error('没有录到声音，请再试一次。');
+  }
+  if (audio.length > MAX_AUDIO_BYTES) {
+    throw new Error('录音太长，请缩短后重试。');
+  }
+
+  const form = new FormData();
+  form.append('file', new Blob([audio], { type: 'audio/webm' }), 'speech.webm');
+  form.append('model', TRANSCRIBE_MODEL);
+
+  const response = await fetch(`${API_BASE_URL}/audio/transcriptions`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${apiKey}` },
+    body: form,
+    signal: AbortSignal.timeout(60_000)
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(`语音识别失败（HTTP ${response.status}），${describeHttpFailure(response.status)}。`);
+  }
+
+  const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
+  if (!text) throw new Error('没有识别到语音内容，请靠近麦克风再试。');
+  if (text.length > MAX_MESSAGE_LENGTH) throw new Error('识别结果过长，请缩短录音时长。');
+  return { text };
+}
+
+async function synthesizeSpeech(text, { apiKey }) {
+  if (typeof text !== 'string' || !text.trim()) {
+    throw new Error('没有需要播报的内容。');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/audio/speech`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: SPEECH_MODEL,
+      input: text.trim().slice(0, MAX_SPEECH_CHARS),
+      voice: SPEECH_VOICE,
+      response_format: 'mp3'
+    }),
+    signal: AbortSignal.timeout(60_000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`语音播报失败（HTTP ${response.status}），${describeHttpFailure(response.status)}。`);
+  }
+
+  const audio = Buffer.from(await response.arrayBuffer());
+  if (!audio.length) throw new Error('语音播报返回了空音频。');
+  if (audio.length > MAX_AUDIO_BYTES) throw new Error('语音播报返回的音频过大。');
+  return { audio, mimeType: 'audio/mpeg' };
+}
+
+module.exports = { MAX_AUDIO_BYTES, MAX_SPEECH_CHARS, synthesizeSpeech, transcribeAudio };

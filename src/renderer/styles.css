@@ -112,6 +112,8 @@ button { color: inherit; }
 }
 
 .icon-button:hover { background: #edf5f2; color: #24584d; }
+.icon-button.toggle-on { color: #348f7d; background: #e4f4ef; }
+.icon-button.toggle-on:hover { color: #277966; }
 .icon-button:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid #51b5a2; outline-offset: 2px; }
 
 .pet-stage {
@@ -523,6 +525,32 @@ button:disabled { cursor: default; opacity: 0.55; }
 .send-button:hover:not(:disabled) { background: #2d8e7a; }
 .send-button:disabled { background: #dcebe6; color: #8ca8a0; opacity: 1; }
 
+.mic-button {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #eef6f3;
+  color: #458c7d;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.mic-button:hover:not(:disabled) { background: #dff0ea; color: #2d8e7a; }
+.mic-button:disabled { cursor: default; opacity: 0.55; }
+
+.mic-recording {
+  background: #fdeae5;
+  color: #c4553f;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+.mic-recording:hover:not(:disabled) { background: #f9ddd5; color: #b0402c; }
+
 .composer-meta {
   display: flex;
   justify-content: space-between;
@@ -645,6 +673,11 @@ button:disabled { cursor: default; opacity: 0.55; }
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 129, 112, 0.35); }
+  50% { box-shadow: 0 0 0 5px rgba(231, 129, 112, 0.08); }
+}
 
 @media (max-width: 390px) {
   .app-shell { width: calc(100% - 10px); height: calc(100% - 10px); margin: 5px; }

@@ -6,5 +6,7 @@ contextBridge.exposeInMainWorld('momo', Object.freeze({
   clearApiKey: () => ipcRenderer.invoke('settings:clear-key'),
   sendMessage: (messages) => ipcRenderer.invoke('assistant:send', messages),
   resolveAction: (requestId, approved) => ipcRenderer.invoke('assistant:resolve', requestId, approved),
+  transcribeVoice: (audio) => ipcRenderer.invoke('voice:transcribe', audio),
+  speak: (text) => ipcRenderer.invoke('voice:speak', text),
   hide: () => ipcRenderer.invoke('window:hide')
 }));

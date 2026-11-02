@@ -18,6 +18,8 @@ declare global {
       clearApiKey: () => Promise<PetSettings>;
       sendMessage: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<AssistantReply>;
       resolveAction: (requestId: string, approved: boolean) => Promise<AssistantReply>;
+      transcribeVoice: (audio: Uint8Array<ArrayBuffer>) => Promise<{ text: string }>;
+      speak: (text: string) => Promise<{ audio: Uint8Array<ArrayBuffer>; mimeType: string }>;
       hide: () => Promise<void>;
     };
   }

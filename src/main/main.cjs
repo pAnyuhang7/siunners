@@ -6,6 +6,7 @@ const { APP_CATALOG, launchAllowedApp, parseOpenAppCall } = require('./app-tools
 const { validateConversation } = require('./conversation.cjs');
 const { requestAssistant } = require('./provider.cjs');
 const { createSettingsStore } = require('./settings-store.cjs');
+const { synthesizeSpeech, transcribeAudio } = require('./voice.cjs');
 
 let mainWindow;
 let tray;
@@ -38,6 +39,11 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.session.setPermissionRequestHandler((contents, permission, callback) => {
+    callback(permission === 'media' && contents === mainWindow?.webContents);
+  });
+  mainWindow.webContents.session.setPermissionCheckHandler((contents, permission) =>
+    permission === 'media' && contents === mainWindow?.webContents);
   trustedPageUrl = app.isPackaged
     ? pathToFileURL(path.join(__dirname, '..', 'dist', 'index.html')).href
     : 'http://127.0.0.1:5173/';
@@ -83,6 +89,16 @@ ipcMain.handle('settings:save', (event, value) => {
 });
 ipcMain.handle('settings:clear-key', (event) => { assertTrustedSender(event); return settingsStore.clearApiKey(); });
 ipcMain.handle('window:hide', (event) => { assertTrustedSender(event); return mainWindow?.hide(); });
+ipcMain.handle('voice:transcribe', async (event, audio) => {
+  assertTrustedSender(event);
+  const credentials = settingsStore.getCredentials();
+  return transcribeAudio(audio, credentials);
+});
+ipcMain.handle('voice:speak', async (event, text) => {
+  assertTrustedSender(event);
+  const credentials = settingsStore.getCredentials();
+  return synthesizeSpeech(text, credentials);
+});
 ipcMain.handle('assistant:send', async (event, rawMessages) => {
   assertTrustedSender(event);
   const messages = validateConversation(rawMessages);

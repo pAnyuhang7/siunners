@@ -1,5 +1,5 @@
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
-import { Check, LoaderCircle, Minus, Send, Settings2, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { Check, LoaderCircle, Mic, Minus, Send, Settings2, ShieldCheck, Sparkles, Square, Volume2, VolumeX, X } from 'lucide-react';
 
 type Role = 'user' | 'assistant';
 type PetMessage = {
@@ -71,8 +71,20 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [online, setOnline] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [voiceOutput, setVoiceOutput] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderStreamRef = useRef<MediaStream | null>(null);
+  const recorderChunksRef = useRef<Blob[]>([]);
+  const recorderTimerRef = useRef<ReturnType<typeof setTimeout> | 0>(0);
+  const playbackRef = useRef<HTMLAudioElement | null>(null);
   const isDesktop = Boolean(window.momo);
+  const recorderMimeType = typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')
+      ? 'audio/webm'
+      : '';
 
   useEffect(() => {
     window.momo?.getSettings().then((next) => {
@@ -90,37 +102,141 @@ function App() {
     setMessages((current) => [...current, { id: makeId(), role: 'assistant', content, action }]);
   };
 
-  async function submitMessage(event?: FormEvent) {
-    event?.preventDefault();
-    const content = draft.trim();
-    if (!content || busy) return;
-    if (isDesktop && !settings.apiKeyConfigured) {
-      setSaveState('先配置 API Key 才能开始对话。');
-      setSettingsOpen(true);
-      return;
-    }
-
+  async function dispatchMessage(content: string) {
+    if (!content) return;
     const next: PetMessage[] = [...messages, { id: makeId(), role: 'user', content }];
     setMessages(next);
-    setDraft('');
     setError('');
     setBusy(true);
     try {
       if (!window.momo) throw new Error('请在 Momo 桌面程序中配置在线 AI。');
       const result = await window.momo.sendMessage(next.slice(-24).map(({ role, content: text }) => ({ role, content: text })));
       if (result.kind === 'confirmation') {
-        addAssistant(result.text || `我可以替你打开${result.appName}。`, {
+        const text = result.text || `我可以替你打开${result.appName}。`;
+        addAssistant(text, {
           requestId: result.requestId,
           appName: result.appName,
           status: 'pending'
         });
+        void speak(text);
       } else {
         addAssistant(result.text);
+        void speak(result.text);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '暂时无法连接在线 AI。');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function submitMessage(event?: FormEvent) {
+    event?.preventDefault();
+    const content = draft.trim();
+    if (!content || busy || recording) return;
+    if (isDesktop && !settings.apiKeyConfigured) {
+      setSaveState('先配置 API Key 才能开始对话。');
+      setSettingsOpen(true);
+      return;
+    }
+    setDraft('');
+    await dispatchMessage(content);
+  }
+
+  async function toggleRecording() {
+    if (recording) {
+      stopRecording();
+      return;
+    }
+    if (busy) return;
+    if (!settings.apiKeyConfigured) {
+      setSaveState('先配置 API Key 才能使用语音。');
+      setSettingsOpen(true);
+      return;
+    }
+    if (!isDesktop) return;
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder || !recorderMimeType) {
+      setError('当前环境不支持录音。');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: recorderMimeType });
+      recorderChunksRef.current = [];
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) recorderChunksRef.current.push(event.data); };
+      recorder.onstop = () => void finishRecording();
+      recorder.start();
+      recorderStreamRef.current = stream;
+      recorderRef.current = recorder;
+      setError('');
+      setRecording(true);
+      recorderTimerRef.current = window.setTimeout(() => stopRecording(), 60_000);
+    } catch {
+      setError('无法访问麦克风，请确认 Windows 麦克风权限已允许 Momo。');
+    } finally {
+      stopPlayback();
+    }
+  }
+
+  function stopRecording() {
+    window.clearTimeout(recorderTimerRef.current);
+    recorderTimerRef.current = 0;
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state === 'recording') recorder.stop();
+  }
+
+  async function finishRecording() {
+    window.clearTimeout(recorderTimerRef.current);
+    recorderTimerRef.current = 0;
+    recorderStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recorderStreamRef.current = null;
+    recorderRef.current = null;
+    setRecording(false);
+    const blob = new Blob(recorderChunksRef.current, { type: recorderMimeType || 'audio/webm' });
+    recorderChunksRef.current = [];
+    if (blob.size < 1024) {
+      setSaveState('没有录到声音，请点击麦克风说话后再结束。');
+      return;
+    }
+    if (busy) {
+      setSaveState('上一条消息还在处理，这次录音没有发送。');
+      return;
+    }
+    setBusy(true);
+    try {
+      if (!window.momo) throw new Error('请在 Momo 桌面程序中使用语音。');
+      const { text } = await window.momo.transcribeVoice(new Uint8Array(await blob.arrayBuffer()));
+      setBusy(false);
+      await dispatchMessage(text);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '语音识别没有完成。');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function speak(text: string) {
+    if (!voiceOutput || !window.momo || !text) return;
+    try {
+      stopPlayback();
+      const { audio, mimeType } = await window.momo.speak(text);
+      const url = URL.createObjectURL(new Blob([audio], { type: mimeType }));
+      const player = new Audio(url);
+      player.onended = () => URL.revokeObjectURL(url);
+      player.onerror = () => URL.revokeObjectURL(url);
+      playbackRef.current = player;
+      await player.play();
+    } catch {
+      // 播报失败不打断对话
+    }
+  }
+
+  function stopPlayback() {
+    const player = playbackRef.current;
+    if (player) {
+      player.pause();
+      player.removeAttribute('src');
+      playbackRef.current = null;
     }
   }
 
@@ -137,6 +253,7 @@ function App() {
         ? { ...message, action: { ...message.action, status: 'done' } }
         : message));
       addAssistant(result.text);
+      void speak(result.text);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '操作没有完成。');
       setMessages((current) => current.map((message) => message.id === messageId && message.action
@@ -193,6 +310,16 @@ function App() {
           <span />{online ? '已配置' : '未连接'}
         </div>
         <div className="window-actions">
+          <button
+            className={`icon-button ${voiceOutput ? 'toggle-on' : ''}`}
+            type="button"
+            title={voiceOutput ? '关闭语音播报' : '开启语音播报'}
+            aria-label={voiceOutput ? '关闭语音播报' : '开启语音播报'}
+            aria-pressed={voiceOutput}
+            onClick={() => { if (voiceOutput) stopPlayback(); setVoiceOutput(!voiceOutput); }}
+          >
+            {voiceOutput ? <Volume2 size={17} /> : <VolumeX size={17} />}
+          </button>
           <button className="icon-button" type="button" title="设置在线 AI" aria-label="设置在线 AI" onClick={() => { setSaveState(''); setSettingsOpen(true); }}>
             <Settings2 size={17} />
           </button>
@@ -257,13 +384,26 @@ function App() {
         <form className="composer" onSubmit={(event) => void submitMessage(event)}>
           <textarea
             aria-label="发送消息给 Momo"
-            placeholder="和 Momo 说说话…"
+            placeholder={recording ? '正在聆听，再点一次麦克风结束…' : '和 Momo 说说话…'}
             rows={1}
             maxLength={6000}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onComposerKeyDown}
           />
+          {isDesktop && (
+            <button
+              className={`mic-button ${recording ? 'mic-recording' : ''}`}
+              type="button"
+              title={recording ? '结束录音并发送' : '语音输入'}
+              aria-label={recording ? '结束录音并发送' : '开始语音输入'}
+              aria-pressed={recording}
+              disabled={busy}
+              onClick={() => void toggleRecording()}
+            >
+              {recording ? <Square size={13} /> : <Mic size={16} />}
+            </button>
+          )}
           <button className="send-button" type="submit" title="发送" aria-label="发送" disabled={!draft.trim() || busy}>
             {busy ? <LoaderCircle className="spin" size={17} /> : <Send size={16} />}
           </button>
