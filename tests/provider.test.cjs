@@ -100,3 +100,23 @@ test('sends requests to a custom endpoint when configured', async (context) => {
   assert.equal(request[0], 'http://127.0.0.1:11434/v1/chat/completions');
   assert.equal(JSON.parse(request[1].body).model, 'llama3');
 });
+
+test('surfaces the provider error inside an HTTP 200 envelope and points at the endpoint', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => response({ code: 500, msg: '404 NOT_FOUND', success: false }));
+
+  await assert.rejects(
+    requestAssistant([{ role: 'user', content: 'hello' }], { apiKey: 'test-key', model: 'm' }),
+    (error) => error.message === '在线 AI 返回了无法识别的结果。请确认请求地址是 OpenAI 兼容接口（根地址 + /chat/completions），而不是其他协议。'
+  );
+});
+
+test('surfaces the wrapped error message when the endpoint reports one', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => response({
+    error: { code: '1210', message: '模型不存在或未开通' }
+  }));
+
+  await assert.rejects(
+    requestAssistant([{ role: 'user', content: 'hello' }], { apiKey: 'test-key', model: 'm' }),
+    (error) => error.message.includes('模型不存在或未开通') && error.message.includes('OpenAI 兼容接口')
+  );
+});

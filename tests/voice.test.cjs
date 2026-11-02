@@ -68,6 +68,17 @@ test('rejects transcriptions that contain no speech', async (context) => {
   );
 });
 
+test('surfaces wrapped provider errors from transcriptions', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => jsonResponse({
+    code: 500, msg: '404 NOT_FOUND', success: false, error: { message: '模型不存在' }
+  }));
+
+  await assert.rejects(
+    transcribeAudio(new Uint8Array([1]), { apiKey: 'test-key' }),
+    (error) => error.message.includes('模型不存在') && error.message.includes('OpenAI 兼容接口')
+  );
+});
+
 test('synthesizes speech audio for assistant replies', async (context) => {
   let request;
   const bytes = Uint8Array.from([9, 8, 7]);

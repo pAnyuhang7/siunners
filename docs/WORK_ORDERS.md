@@ -73,6 +73,11 @@
 - 状态：后续
 - 交付：桌宠沿桌面边缘与屏幕底部行走、待机动作；基于 MOMO-011 的透明窗口实现。
 
+### MOMO-013 Anthropic 协议适配
+
+- 状态：已排期
+- 交付：支持 Anthropic Messages 协议端点（如智谱 `/api/anthropic`），按地址或手动选择切换 OpenAI / Anthropic 两种请求格式；工具调用映射到 Anthropic tool_use 块。
+
 ## 当前验收记录
 
 - 9 项单元测试、TypeScript 检查和 Vite 生产构建通过；模拟测试覆盖普通回复、应用工具往返、加密保存和 401 错误处理。

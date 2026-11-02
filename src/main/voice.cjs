@@ -42,7 +42,13 @@ async function transcribeAudio(audio, { apiKey, baseUrl }) {
   }
 
   const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
-  if (!text) throw new Error('没有识别到语音内容，请靠近麦克风再试。');
+  if (!text) {
+    const detail = typeof payload?.error?.message === 'string'
+      ? payload.error.message.replace(/\s+/g, ' ').trim().slice(0, 200)
+      : '';
+    if (detail) throw new Error(`语音识别返回了无法识别的结果：${detail}。请确认请求地址是 OpenAI 兼容接口。`);
+    throw new Error('没有识别到语音内容，请靠近麦克风再试。');
+  }
   if (text.length > MAX_MESSAGE_LENGTH) throw new Error('识别结果过长，请缩短录音时长。');
   return { text };
 }
