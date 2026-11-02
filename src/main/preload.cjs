@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('momo', Object.freeze({
   resolveAction: (requestId, approved) => ipcRenderer.invoke('assistant:resolve', requestId, approved),
   transcribeVoice: (audio) => ipcRenderer.invoke('voice:transcribe', audio),
   speak: (text) => ipcRenderer.invoke('voice:speak', text),
-  hide: () => ipcRenderer.invoke('window:hide')
+  hide: () => ipcRenderer.invoke('window:hide'),
+  toggleChat: () => ipcRenderer.invoke('chat:toggle'),
+  setClickThrough: (ignore) => ipcRenderer.invoke('window:set-click-through', ignore)
 }));

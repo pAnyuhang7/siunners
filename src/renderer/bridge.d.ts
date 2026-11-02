@@ -22,6 +22,8 @@ declare global {
       transcribeVoice: (audio: Uint8Array<ArrayBuffer>) => Promise<{ text: string }>;
       speak: (text: string) => Promise<{ audio: Uint8Array<ArrayBuffer>; mimeType: string }>;
       hide: () => Promise<void>;
+      toggleChat: () => Promise<boolean>;
+      setClickThrough: (ignore: boolean) => Promise<void>;
     };
   }
 }
