@@ -9,7 +9,7 @@ type PetMessage = {
   action?: {
     requestId: string;
     appName: string;
-    status: 'pending' | 'running' | 'done' | 'cancelled';
+    status: 'pending' | 'running' | 'done' | 'cancelled' | 'failed';
   };
 };
 
@@ -21,6 +21,16 @@ const defaultSettings: PetSettings = {
 
 function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function actionStatusText(action: NonNullable<PetMessage['action']>) {
+  switch (action.status) {
+    case 'running': return `正在打开${action.appName}`;
+    case 'done': return `已处理：${action.appName}`;
+    case 'failed': return `打开${action.appName}失败`;
+    case 'cancelled': return `已取消：${action.appName}`;
+    default: return `允许打开${action.appName}？`;
+  }
 }
 
 function PetCharacter() {
@@ -130,7 +140,7 @@ function App() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '操作没有完成。');
       setMessages((current) => current.map((message) => message.id === messageId && message.action
-        ? { ...message, action: { ...message.action, status: 'done' } }
+        ? { ...message, action: { ...message.action, status: 'failed' } }
         : message));
     } finally {
       setBusy(false);
@@ -220,7 +230,7 @@ function App() {
                   <div className="action-confirmation">
                     <div className="action-confirmation-title">
                       <ShieldCheck size={16} />
-                      <span>{message.action.status === 'pending' ? `允许打开${message.action.appName}？` : message.action.status === 'running' ? `正在打开${message.action.appName}` : message.action.status === 'done' ? `已处理：${message.action.appName}` : `已取消：${message.action.appName}`}</span>
+                      <span>{actionStatusText(message.action)}</span>
                     </div>
                     {message.action.status === 'pending' && (
                       <div className="action-buttons">

@@ -9,7 +9,7 @@
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "tsc -b && vite build && node scripts/build-electron.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test tests/*.test.cjs"
+    "test": "node --test tests/"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
