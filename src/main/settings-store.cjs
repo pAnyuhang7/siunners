@@ -130,7 +130,7 @@ function createSettingsStore({ app, safeStorage }) {
     }
     if (typeof voiceApiKey === 'string' && voiceApiKey.trim()) {
       next.voiceApiKeyEncrypted = safeStorage.encryptString(voiceApiKey.trim()).toString('base64');
-    } else if (voiceApiKey === undefined && typeof current.voiceApiKeyEncrypted === 'string') {
+    } else if (typeof current.voiceApiKeyEncrypted === 'string') {
       next.voiceApiKeyEncrypted = current.voiceApiKeyEncrypted;
     }
 

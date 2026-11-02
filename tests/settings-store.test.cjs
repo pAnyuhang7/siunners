@@ -128,7 +128,7 @@ test('configures a separate voice endpoint and voice key', (context) => {
 
   const reset = store.save({ apiKey: '', model: 'm1', voiceBaseUrl: '', voiceApiKey: '', voiceTranscribeModel: '', voiceSpeechModel: '', voiceSpeechVoice: '' });
   assert.equal(reset.voiceBaseUrl, 'https://chat.example.com/v1');
-  assert.equal(reset.voiceKeyConfigured, false);
+  assert.equal(reset.voiceKeyConfigured, true);
   assert.deepEqual(store.getCredentials(), {
     model: 'm1',
     baseUrl: 'https://chat.example.com/v1',
@@ -137,8 +137,16 @@ test('configures a separate voice endpoint and voice key', (context) => {
     voiceSpeechModel: '',
     voiceSpeechVoice: '',
     apiKey: 'sk-chat-secret-value',
-    voiceApiKey: 'sk-chat-secret-value'
+    voiceApiKey: voiceKey
   });
+});
+
+test('keeps the stored voice key when settings are saved without re-entering it', (context) => {
+  const { store } = makeStore(context);
+  store.save({ apiKey: 'sk-chat', model: 'm1', voiceApiKey: 'sk-voice-stored' });
+  const next = store.save({ apiKey: '', model: 'm2', voiceBaseUrl: 'https://voice.example.com/v1' });
+  assert.equal(next.voiceKeyConfigured, true);
+  assert.equal(store.getCredentials().voiceApiKey, 'sk-voice-stored');
 });
 
 test('rejects invalid voice model names and voices', (context) => {
