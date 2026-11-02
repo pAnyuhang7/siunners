@@ -75,7 +75,7 @@ test('surfaces wrapped provider errors from transcriptions', async (context) => 
 
   await assert.rejects(
     transcribeAudio(new Uint8Array([1]), { apiKey: 'test-key' }),
-    (error) => error.message.includes('模型不存在') && error.message.includes('OpenAI 兼容接口')
+    (error) => error.message.includes('模型不存在') && error.message.includes('OpenAI 兼容 /audio/transcriptions')
   );
 });
 
@@ -141,4 +141,65 @@ test('sends voice requests to a custom endpoint when configured', async (context
     'http://127.0.0.1:8000/v1/audio/transcriptions',
     'http://127.0.0.1:8000/v1/audio/speech'
   ]);
+});
+
+test('prefers the dedicated voice endpoint over the chat endpoint', async (context) => {
+  const urls = [];
+  context.mock.method(globalThis, 'fetch', async (url) => {
+    urls.push(String(url));
+    if (String(url).endsWith('/audio/transcriptions')) return jsonResponse({ text: '你好' });
+    return { ok: true, status: 200, arrayBuffer: async () => Uint8Array.from([1]).buffer };
+  });
+
+  const credentials = {
+    apiKey: 'test-key',
+    voiceApiKey: 'voice-key',
+    baseUrl: 'https://chat.example.com/v1',
+    voiceBaseUrl: 'https://voice.example.com/v1'
+  };
+  await transcribeAudio(new Uint8Array([1]), credentials);
+  assert.equal(urls[0], 'https://voice.example.com/v1/audio/transcriptions');
+});
+
+test('uses the configured voice model names when provided', async (context) => {
+  let transcribeForm;
+  let speechBody;
+  context.mock.method(globalThis, 'fetch', async (_url, init) => {
+    if (String(init.body) === '[object FormData]' || init.body instanceof FormData) {
+      transcribeForm = init.body;
+      return jsonResponse({ text: '你好' });
+    }
+    speechBody = JSON.parse(init.body);
+    return { ok: true, status: 200, arrayBuffer: async () => Uint8Array.from([1]).buffer };
+  });
+
+  const credentials = {
+    apiKey: 'test-key',
+    voiceTranscribeModel: 'FunAudioLLM/SenseVoiceSmall',
+    voiceSpeechModel: 'fish-speech-1.5'
+  };
+  await transcribeAudio(new Uint8Array([1]), credentials);
+  await synthesizeSpeech('你好', credentials);
+  assert.equal(transcribeForm.get('model'), 'FunAudioLLM/SenseVoiceSmall');
+  assert.equal(speechBody.model, 'fish-speech-1.5');
+});
+
+test('reports a missing voice endpoint clearly', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 404, json: async () => ({}) }));
+
+  await assert.rejects(
+    transcribeAudio(new Uint8Array([1]), { apiKey: 'test-key' }),
+    (error) => error.message === '语音识别失败（HTTP 404），该服务没有这个语音接口，请确认语音地址支持 OpenAI 兼容 /audio 接口。'
+  );
+});
+
+test('surfaces plain wrapped error fields from transcriptions', async (context) => {
+  context.mock.method(globalThis, 'fetch', async () => jsonResponse({
+    code: 500, msg: '404 NOT_FOUND', success: false
+  }));
+
+  await assert.rejects(
+    transcribeAudio(new Uint8Array([1]), { apiKey: 'test-key' }),
+    (error) => error.message.includes('404 NOT_FOUND') && error.message.includes('/audio/transcriptions')
+  );
 });

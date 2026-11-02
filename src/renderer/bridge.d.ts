@@ -4,6 +4,10 @@ declare global {
   interface PetSettings {
     model: string;
     baseUrl: string;
+    voiceBaseUrl: string;
+    voiceTranscribeModel: string;
+    voiceSpeechModel: string;
+    voiceKeyConfigured: boolean;
     apiKeyConfigured: boolean;
     secureStorageAvailable: boolean;
   }
@@ -15,7 +19,15 @@ declare global {
   interface Window {
     momo?: {
       getSettings: () => Promise<PetSettings>;
-      saveSettings: (value: { apiKey: string; model: string; baseUrl: string }) => Promise<PetSettings>;
+      saveSettings: (value: {
+        apiKey: string;
+        model: string;
+        baseUrl: string;
+        voiceBaseUrl: string;
+        voiceApiKey: string;
+        voiceTranscribeModel: string;
+        voiceSpeechModel: string;
+      }) => Promise<PetSettings>;
       clearApiKey: () => Promise<PetSettings>;
       sendMessage: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<AssistantReply>;
       resolveAction: (requestId: string, approved: boolean) => Promise<AssistantReply>;

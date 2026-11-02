@@ -16,6 +16,10 @@ type PetMessage = {
 const defaultSettings: PetSettings = {
   model: 'gpt-6.1-sol',
   baseUrl: 'https://docode.cc/v1',
+  voiceBaseUrl: 'https://docode.cc/v1',
+  voiceTranscribeModel: '',
+  voiceSpeechModel: '',
+  voiceKeyConfigured: false,
   apiKeyConfigured: false,
   secureStorageAvailable: false
 };
@@ -42,6 +46,10 @@ function App() {
   const [apiKey, setApiKey] = useState('');
   const [model, setModel] = useState(defaultSettings.model);
   const [baseUrl, setBaseUrl] = useState(defaultSettings.baseUrl);
+  const [voiceBaseUrl, setVoiceBaseUrl] = useState(defaultSettings.voiceBaseUrl);
+  const [voiceApiKey, setVoiceApiKey] = useState('');
+  const [voiceTranscribeModel, setVoiceTranscribeModel] = useState(defaultSettings.voiceTranscribeModel);
+  const [voiceSpeechModel, setVoiceSpeechModel] = useState(defaultSettings.voiceSpeechModel);
   const [saveState, setSaveState] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +74,9 @@ function App() {
       setSettings(next);
       setModel(next.model);
       setBaseUrl(next.baseUrl);
+      setVoiceBaseUrl(next.voiceBaseUrl);
+      setVoiceTranscribeModel(next.voiceTranscribeModel);
+      setVoiceSpeechModel(next.voiceSpeechModel);
       setOnline(next.apiKeyConfigured);
     }).catch(() => setOnline(false));
   }, []);
@@ -248,11 +259,17 @@ function App() {
       return;
     }
     try {
-      const next = await window.momo.saveSettings({ apiKey, model, baseUrl });
+      const next = await window.momo.saveSettings({
+        apiKey, model, baseUrl, voiceBaseUrl, voiceApiKey, voiceTranscribeModel, voiceSpeechModel
+      });
       setSettings(next);
       setModel(next.model);
       setBaseUrl(next.baseUrl);
+      setVoiceBaseUrl(next.voiceBaseUrl);
+      setVoiceTranscribeModel(next.voiceTranscribeModel);
+      setVoiceSpeechModel(next.voiceSpeechModel);
       setApiKey('');
+      setVoiceApiKey('');
       setOnline(next.apiKeyConfigured);
       setSaveState('已保存');
     } catch (cause) {
@@ -392,6 +409,15 @@ function App() {
               <input id="model" className="text-field" value={model} onChange={(event) => setModel(event.target.value)} placeholder="gpt-6.1-sol" autoComplete="off" spellCheck={false} />
               <label className="field-label" htmlFor="api-key">API Key</label>
               <input id="api-key" className="text-field" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={settings.apiKeyConfigured ? '已保存，留空则保持不变' : 'sk-…'} autoComplete="new-password" />
+              <label className="field-label" htmlFor="voice-url">语音地址（可选）</label>
+              <input id="voice-url" className="text-field" value={voiceBaseUrl} onChange={(event) => setVoiceBaseUrl(event.target.value)} placeholder="留空跟随请求地址" autoComplete="off" spellCheck={false} />
+              <p className="endpoint-note">语音识别与播报可以走不同的服务商（需支持 OpenAI 兼容 /audio 接口），留空则与聊天共用请求地址。</p>
+              <label className="field-label" htmlFor="voice-key">语音 Key（可选）</label>
+              <input id="voice-key" className="text-field" type="password" value={voiceApiKey} onChange={(event) => setVoiceApiKey(event.target.value)} placeholder={settings.voiceKeyConfigured ? '已保存，留空则保持不变' : '留空使用上方 API Key'} autoComplete="new-password" />
+              <label className="field-label" htmlFor="voice-transcribe-model">语音识别模型（可选）</label>
+              <input id="voice-transcribe-model" className="text-field" value={voiceTranscribeModel} onChange={(event) => setVoiceTranscribeModel(event.target.value)} placeholder="默认 whisper-1" autoComplete="off" spellCheck={false} />
+              <label className="field-label" htmlFor="voice-speech-model">语音合成模型（可选）</label>
+              <input id="voice-speech-model" className="text-field" value={voiceSpeechModel} onChange={(event) => setVoiceSpeechModel(event.target.value)} placeholder="默认 tts-1" autoComplete="off" spellCheck={false} />
               <div className="secure-note"><ShieldCheck size={15} /><span>{settings.secureStorageAvailable ? '凭据将加密保存在此 Windows 用户账户中' : '当前系统不支持安全凭据存储'}</span></div>
               {saveState && <p className="save-state" role="status">{saveState}</p>}
               <div className="modal-actions">

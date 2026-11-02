@@ -10,14 +10,22 @@ const SPEECH_VOICE = 'alloy';
 function describeHttpFailure(status) {
   if (status === 401) return '请检查 API Key';
   if (status === 429) return '服务限流或额度不足';
+  if (status === 404) return '该服务没有这个语音接口，请确认语音地址支持 OpenAI 兼容 /audio 接口';
   return '请稍后重试';
 }
 
-function resolveRoot(baseUrl) {
+function resolveRoot(baseUrl, voiceBaseUrl) {
+  if (typeof voiceBaseUrl === 'string' && voiceBaseUrl) return voiceBaseUrl.replace(/\/+$/, '');
   return typeof baseUrl === 'string' && baseUrl ? baseUrl.replace(/\/+$/, '') : API_BASE_URL;
 }
 
-async function transcribeAudio(audio, { apiKey, baseUrl }) {
+function wrappedErrorDetail(payload) {
+  const candidates = [payload?.error?.message, payload?.msg, payload?.message];
+  const detail = candidates.find((value) => typeof value === 'string' && value.trim());
+  return detail ? detail.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+}
+
+async function transcribeAudio(audio, { apiKey, baseUrl, voiceBaseUrl, voiceTranscribeModel }) {
   if (!(audio instanceof Uint8Array) || audio.length === 0) {
     throw new Error('没有录到声音，请再试一次。');
   }
@@ -27,9 +35,9 @@ async function transcribeAudio(audio, { apiKey, baseUrl }) {
 
   const form = new FormData();
   form.append('file', new Blob([audio], { type: 'audio/webm' }), 'speech.webm');
-  form.append('model', TRANSCRIBE_MODEL);
+  form.append('model', voiceTranscribeModel || TRANSCRIBE_MODEL);
 
-  const response = await fetch(`${resolveRoot(baseUrl)}/audio/transcriptions`, {
+  const response = await fetch(`${resolveRoot(baseUrl, voiceBaseUrl)}/audio/transcriptions`, {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}` },
     body: form,
@@ -43,29 +51,28 @@ async function transcribeAudio(audio, { apiKey, baseUrl }) {
 
   const text = typeof payload?.text === 'string' ? payload.text.trim() : '';
   if (!text) {
-    const detail = typeof payload?.error?.message === 'string'
-      ? payload.error.message.replace(/\s+/g, ' ').trim().slice(0, 200)
-      : '';
-    if (detail) throw new Error(`语音识别返回了无法识别的结果：${detail}。请确认请求地址是 OpenAI 兼容接口。`);
+    const detail = wrappedErrorDetail(payload);
+    if (detail) throw new Error(`语音识别返回了无法识别的结果：${detail}。请确认语音地址支持 OpenAI 兼容 /audio/transcriptions 接口。`);
+    if (!payload) throw new Error('语音服务返回了无法解析的内容，请确认该地址支持语音识别接口。');
     throw new Error('没有识别到语音内容，请靠近麦克风再试。');
   }
   if (text.length > MAX_MESSAGE_LENGTH) throw new Error('识别结果过长，请缩短录音时长。');
   return { text };
 }
 
-async function synthesizeSpeech(text, { apiKey, baseUrl }) {
+async function synthesizeSpeech(text, { apiKey, baseUrl, voiceBaseUrl, voiceSpeechModel }) {
   if (typeof text !== 'string' || !text.trim()) {
     throw new Error('没有需要播报的内容。');
   }
 
-  const response = await fetch(`${resolveRoot(baseUrl)}/audio/speech`, {
+  const response = await fetch(`${resolveRoot(baseUrl, voiceBaseUrl)}/audio/speech`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${apiKey}`,
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      model: SPEECH_MODEL,
+      model: voiceSpeechModel || SPEECH_MODEL,
       input: text.trim().slice(0, MAX_SPEECH_CHARS),
       voice: SPEECH_VOICE,
       response_format: 'mp3'
