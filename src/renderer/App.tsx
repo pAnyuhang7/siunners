@@ -19,6 +19,7 @@ const defaultSettings: PetSettings = {
   voiceBaseUrl: 'https://docode.cc/v1',
   voiceTranscribeModel: '',
   voiceSpeechModel: '',
+  voiceSpeechVoice: '',
   voiceKeyConfigured: false,
   apiKeyConfigured: false,
   secureStorageAvailable: false
@@ -50,6 +51,9 @@ function App() {
   const [voiceApiKey, setVoiceApiKey] = useState('');
   const [voiceTranscribeModel, setVoiceTranscribeModel] = useState(defaultSettings.voiceTranscribeModel);
   const [voiceSpeechModel, setVoiceSpeechModel] = useState(defaultSettings.voiceSpeechModel);
+  const [voiceSpeechVoice, setVoiceSpeechVoice] = useState(defaultSettings.voiceSpeechVoice);
+  const [voiceNotice, setVoiceNotice] = useState('');
+  const voiceNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | 0>(0);
   const [saveState, setSaveState] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -77,6 +81,7 @@ function App() {
       setVoiceBaseUrl(next.voiceBaseUrl);
       setVoiceTranscribeModel(next.voiceTranscribeModel);
       setVoiceSpeechModel(next.voiceSpeechModel);
+      setVoiceSpeechVoice(next.voiceSpeechVoice);
       setOnline(next.apiKeyConfigured);
     }).catch(() => setOnline(false));
   }, []);
@@ -202,6 +207,12 @@ function App() {
     }
   }
 
+  function showVoiceNotice(text: string) {
+    window.clearTimeout(voiceNoticeTimerRef.current);
+    setVoiceNotice(text);
+    voiceNoticeTimerRef.current = window.setTimeout(() => setVoiceNotice(''), 6000);
+  }
+
   async function speak(text: string) {
     if (!voiceOutput || !window.momo || !text) return;
     try {
@@ -213,8 +224,8 @@ function App() {
       player.onerror = () => URL.revokeObjectURL(url);
       playbackRef.current = player;
       await player.play();
-    } catch {
-      // 播报失败不打断对话
+    } catch (cause) {
+      showVoiceNotice(cause instanceof Error ? `语音播报没有成功：${cause.message}` : '语音播报没有成功。');
     }
   }
 
@@ -260,7 +271,7 @@ function App() {
     }
     try {
       const next = await window.momo.saveSettings({
-        apiKey, model, baseUrl, voiceBaseUrl, voiceApiKey, voiceTranscribeModel, voiceSpeechModel
+        apiKey, model, baseUrl, voiceBaseUrl, voiceApiKey, voiceTranscribeModel, voiceSpeechModel, voiceSpeechVoice
       });
       setSettings(next);
       setModel(next.model);
@@ -268,6 +279,7 @@ function App() {
       setVoiceBaseUrl(next.voiceBaseUrl);
       setVoiceTranscribeModel(next.voiceTranscribeModel);
       setVoiceSpeechModel(next.voiceSpeechModel);
+      setVoiceSpeechVoice(next.voiceSpeechVoice);
       setApiKey('');
       setVoiceApiKey('');
       setOnline(next.apiKeyConfigured);
@@ -362,6 +374,7 @@ function App() {
       </section>
 
       <footer className="composer-area">
+        {voiceNotice && <div className="voice-notice" role="status">{voiceNotice}</div>}
         {error && <div className="inline-error" role="alert">{error}</div>}
         {!isDesktop && <div className="preview-note">桌面预览</div>}
         <form className="composer" onSubmit={(event) => void submitMessage(event)}>
@@ -418,6 +431,8 @@ function App() {
               <input id="voice-transcribe-model" className="text-field" value={voiceTranscribeModel} onChange={(event) => setVoiceTranscribeModel(event.target.value)} placeholder="默认 whisper-1" autoComplete="off" spellCheck={false} />
               <label className="field-label" htmlFor="voice-speech-model">语音合成模型（可选）</label>
               <input id="voice-speech-model" className="text-field" value={voiceSpeechModel} onChange={(event) => setVoiceSpeechModel(event.target.value)} placeholder="默认 tts-1" autoComplete="off" spellCheck={false} />
+              <label className="field-label" htmlFor="voice-speech-voice">语音音色（可选）</label>
+              <input id="voice-speech-voice" className="text-field" value={voiceSpeechVoice} onChange={(event) => setVoiceSpeechVoice(event.target.value)} placeholder="默认 alloy；硅基流动如 FunAudioLLM/CosyVoice2-0.5B:alex" autoComplete="off" spellCheck={false} />
               <div className="secure-note"><ShieldCheck size={15} /><span>{settings.secureStorageAvailable ? '凭据将加密保存在此 Windows 用户账户中' : '当前系统不支持安全凭据存储'}</span></div>
               {saveState && <p className="save-state" role="status">{saveState}</p>}
               <div className="modal-actions">

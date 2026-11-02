@@ -153,7 +153,8 @@ ipcMain.handle('settings:save', (event, value) => {
     voiceBaseUrl: value.voiceBaseUrl,
     voiceApiKey: value.voiceApiKey,
     voiceTranscribeModel: value.voiceTranscribeModel,
-    voiceSpeechModel: value.voiceSpeechModel
+    voiceSpeechModel: value.voiceSpeechModel,
+    voiceSpeechVoice: value.voiceSpeechVoice
   });
 });
 ipcMain.handle('settings:clear-key', (event) => { assertTrustedSender(event); return settingsStore.clearApiKey(); });

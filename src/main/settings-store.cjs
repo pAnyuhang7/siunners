@@ -33,6 +33,15 @@ function normalizeVoiceModel(value) {
   return trimmed;
 }
 
+function normalizeSpeechVoice(value) {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string') throw new Error('语音音色格式无效。');
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (!/^[A-Za-z0-9._:/-]{1,150}$/.test(trimmed)) throw new Error('语音音色格式无效。');
+  return trimmed;
+}
+
 function createSettingsStore({ app, safeStorage }) {
   const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
@@ -72,6 +81,7 @@ function createSettingsStore({ app, safeStorage }) {
       voiceBaseUrl: storedVoiceBaseUrl(data),
       voiceTranscribeModel: typeof data.voiceTranscribeModel === 'string' ? data.voiceTranscribeModel : '',
       voiceSpeechModel: typeof data.voiceSpeechModel === 'string' ? data.voiceSpeechModel : '',
+      voiceSpeechVoice: typeof data.voiceSpeechVoice === 'string' ? data.voiceSpeechVoice : '',
       voiceKeyConfigured: typeof data.voiceApiKeyEncrypted === 'string',
       apiKeyConfigured: typeof data.apiKeyEncrypted === 'string',
       secureStorageAvailable: safeStorage.isEncryptionAvailable()
@@ -83,7 +93,7 @@ function createSettingsStore({ app, safeStorage }) {
     fs.writeFileSync(settingsPath, JSON.stringify(next), { encoding: 'utf8', mode: 0o600 });
   }
 
-  function save({ apiKey, model, baseUrl, voiceBaseUrl, voiceApiKey, voiceTranscribeModel, voiceSpeechModel }) {
+  function save({ apiKey, model, baseUrl, voiceBaseUrl, voiceApiKey, voiceTranscribeModel, voiceSpeechModel, voiceSpeechVoice }) {
     if (!safeStorage.isEncryptionAvailable()) {
       throw new Error('Windows 凭据加密不可用，无法安全保存 API Key。');
     }
@@ -101,6 +111,7 @@ function createSettingsStore({ app, safeStorage }) {
     }
     const nextTranscribeModel = normalizeVoiceModel(voiceTranscribeModel);
     const nextSpeechModel = normalizeVoiceModel(voiceSpeechModel);
+    const nextSpeechVoice = normalizeSpeechVoice(voiceSpeechVoice);
 
     const next = { model: model.trim(), baseUrl: nextBaseUrl, voiceBaseUrl: nextVoiceBaseUrl };
     next.voiceTranscribeModel = nextTranscribeModel === undefined
@@ -109,6 +120,9 @@ function createSettingsStore({ app, safeStorage }) {
     next.voiceSpeechModel = nextSpeechModel === undefined
       ? (typeof current.voiceSpeechModel === 'string' ? current.voiceSpeechModel : '')
       : nextSpeechModel;
+    next.voiceSpeechVoice = nextSpeechVoice === undefined
+      ? (typeof current.voiceSpeechVoice === 'string' ? current.voiceSpeechVoice : '')
+      : nextSpeechVoice;
     if (typeof apiKey === 'string' && apiKey.trim()) {
       next.apiKeyEncrypted = safeStorage.encryptString(apiKey.trim()).toString('base64');
     } else if (typeof current.apiKeyEncrypted === 'string') {
@@ -131,7 +145,8 @@ function createSettingsStore({ app, safeStorage }) {
       baseUrl: storedBaseUrl(data),
       voiceBaseUrl: typeof data.voiceBaseUrl === 'string' ? data.voiceBaseUrl : '',
       voiceTranscribeModel: typeof data.voiceTranscribeModel === 'string' ? data.voiceTranscribeModel : '',
-      voiceSpeechModel: typeof data.voiceSpeechModel === 'string' ? data.voiceSpeechModel : ''
+      voiceSpeechModel: typeof data.voiceSpeechModel === 'string' ? data.voiceSpeechModel : '',
+      voiceSpeechVoice: typeof data.voiceSpeechVoice === 'string' ? data.voiceSpeechVoice : ''
     };
     writeSettings(next);
     return getPublicSettings();
@@ -155,6 +170,7 @@ function createSettingsStore({ app, safeStorage }) {
       voiceBaseUrl: storedVoiceBaseUrl(data),
       voiceTranscribeModel: typeof data.voiceTranscribeModel === 'string' ? data.voiceTranscribeModel : '',
       voiceSpeechModel: typeof data.voiceSpeechModel === 'string' ? data.voiceSpeechModel : '',
+      voiceSpeechVoice: typeof data.voiceSpeechVoice === 'string' ? data.voiceSpeechVoice : '',
       apiKey,
       voiceApiKey
     };

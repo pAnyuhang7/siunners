@@ -190,12 +190,14 @@ test('uses the configured voice model names when provided', async (context) => {
   const credentials = {
     apiKey: 'test-key',
     voiceTranscribeModel: 'FunAudioLLM/SenseVoiceSmall',
-    voiceSpeechModel: 'fish-speech-1.5'
+    voiceSpeechModel: 'FunAudioLLM/CosyVoice2-0.5B',
+    voiceSpeechVoice: 'FunAudioLLM/CosyVoice2-0.5B:alex'
   };
   await transcribeAudio(new Uint8Array([1]), credentials);
   await synthesizeSpeech('你好', credentials);
   assert.equal(transcribeForm.get('model'), 'FunAudioLLM/SenseVoiceSmall');
-  assert.equal(speechBody.model, 'fish-speech-1.5');
+  assert.equal(speechBody.model, 'FunAudioLLM/CosyVoice2-0.5B');
+  assert.equal(speechBody.voice, 'FunAudioLLM/CosyVoice2-0.5B:alex');
 });
 
 test('reports a missing voice endpoint clearly', async (context) => {

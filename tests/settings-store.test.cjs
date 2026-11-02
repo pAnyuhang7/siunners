@@ -26,6 +26,7 @@ test('persists API credentials only in encrypted form and supports removal', (co
     voiceBaseUrl: DEFAULT_BASE_URL,
     voiceTranscribeModel: '',
     voiceSpeechModel: '',
+    voiceSpeechVoice: '',
     voiceKeyConfigured: false,
     apiKeyConfigured: true,
     secureStorageAvailable: true
@@ -37,6 +38,7 @@ test('persists API credentials only in encrypted form and supports removal', (co
     voiceBaseUrl: DEFAULT_BASE_URL,
     voiceTranscribeModel: '',
     voiceSpeechModel: '',
+    voiceSpeechVoice: '',
     apiKey,
     voiceApiKey: apiKey
   });
@@ -60,6 +62,7 @@ test('saves a custom endpoint and applies it to credentials', (context) => {
     voiceBaseUrl: 'http://127.0.0.1:11434/v1',
     voiceTranscribeModel: '',
     voiceSpeechModel: '',
+    voiceSpeechVoice: '',
     apiKey: 'sk-test-secret-value',
     voiceApiKey: 'sk-test-secret-value'
   });
@@ -72,6 +75,7 @@ test('saves a custom endpoint and applies it to credentials', (context) => {
     voiceBaseUrl: DEFAULT_BASE_URL,
     voiceTranscribeModel: '',
     voiceSpeechModel: '',
+    voiceSpeechVoice: '',
     apiKey: 'sk-test-secret-value',
     voiceApiKey: 'sk-test-secret-value'
   });
@@ -105,7 +109,8 @@ test('configures a separate voice endpoint and voice key', (context) => {
     voiceBaseUrl: 'https://voice.example.com/v1/',
     voiceApiKey: voiceKey,
     voiceTranscribeModel: 'FunAudioLLM/SenseVoiceSmall',
-    voiceSpeechModel: 'fish-speech-1.5'
+    voiceSpeechModel: 'FunAudioLLM/CosyVoice2-0.5B',
+    voiceSpeechVoice: 'FunAudioLLM/CosyVoice2-0.5B:alex'
   });
   assert.equal(next.voiceBaseUrl, 'https://voice.example.com/v1');
   assert.equal(next.voiceKeyConfigured, true);
@@ -115,12 +120,13 @@ test('configures a separate voice endpoint and voice key', (context) => {
     baseUrl: 'https://chat.example.com/v1',
     voiceBaseUrl: 'https://voice.example.com/v1',
     voiceTranscribeModel: 'FunAudioLLM/SenseVoiceSmall',
-    voiceSpeechModel: 'fish-speech-1.5',
+    voiceSpeechModel: 'FunAudioLLM/CosyVoice2-0.5B',
+    voiceSpeechVoice: 'FunAudioLLM/CosyVoice2-0.5B:alex',
     apiKey: 'sk-chat-secret-value',
     voiceApiKey: voiceKey
   });
 
-  const reset = store.save({ apiKey: '', model: 'm1', voiceBaseUrl: '', voiceApiKey: '', voiceTranscribeModel: '', voiceSpeechModel: '' });
+  const reset = store.save({ apiKey: '', model: 'm1', voiceBaseUrl: '', voiceApiKey: '', voiceTranscribeModel: '', voiceSpeechModel: '', voiceSpeechVoice: '' });
   assert.equal(reset.voiceBaseUrl, 'https://chat.example.com/v1');
   assert.equal(reset.voiceKeyConfigured, false);
   assert.deepEqual(store.getCredentials(), {
@@ -129,16 +135,21 @@ test('configures a separate voice endpoint and voice key', (context) => {
     voiceBaseUrl: 'https://chat.example.com/v1',
     voiceTranscribeModel: '',
     voiceSpeechModel: '',
+    voiceSpeechVoice: '',
     apiKey: 'sk-chat-secret-value',
     voiceApiKey: 'sk-chat-secret-value'
   });
 });
 
-test('rejects invalid voice model names', (context) => {
+test('rejects invalid voice model names and voices', (context) => {
   const { store } = makeStore(context);
   assert.throws(
     () => store.save({ apiKey: 'k', model: 'm1', voiceTranscribeModel: 'bad model!' }),
     /语音模型名称/
+  );
+  assert.throws(
+    () => store.save({ apiKey: 'k', model: 'm1', voiceSpeechVoice: 'alex speaker' }),
+    /语音音色/
   );
 });
 

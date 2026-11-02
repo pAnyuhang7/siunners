@@ -7,6 +7,7 @@ declare global {
     voiceBaseUrl: string;
     voiceTranscribeModel: string;
     voiceSpeechModel: string;
+    voiceSpeechVoice: string;
     voiceKeyConfigured: boolean;
     apiKeyConfigured: boolean;
     secureStorageAvailable: boolean;
@@ -27,6 +28,7 @@ declare global {
         voiceApiKey: string;
         voiceTranscribeModel: string;
         voiceSpeechModel: string;
+        voiceSpeechVoice: string;
       }) => Promise<PetSettings>;
       clearApiKey: () => Promise<PetSettings>;
       sendMessage: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => Promise<AssistantReply>;

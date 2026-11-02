@@ -60,7 +60,7 @@ async function transcribeAudio(audio, { apiKey, voiceApiKey, baseUrl, voiceBaseU
   return { text };
 }
 
-async function synthesizeSpeech(text, { apiKey, voiceApiKey, baseUrl, voiceBaseUrl, voiceSpeechModel }) {
+async function synthesizeSpeech(text, { apiKey, voiceApiKey, baseUrl, voiceBaseUrl, voiceSpeechModel, voiceSpeechVoice }) {
   if (typeof text !== 'string' || !text.trim()) {
     throw new Error('没有需要播报的内容。');
   }
@@ -74,7 +74,7 @@ async function synthesizeSpeech(text, { apiKey, voiceApiKey, baseUrl, voiceBaseU
     body: JSON.stringify({
       model: voiceSpeechModel || SPEECH_MODEL,
       input: text.trim().slice(0, MAX_SPEECH_CHARS),
-      voice: SPEECH_VOICE,
+      voice: voiceSpeechVoice || SPEECH_VOICE,
       response_format: 'mp3'
     }),
     signal: AbortSignal.timeout(60_000)
