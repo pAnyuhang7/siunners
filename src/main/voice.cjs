@@ -25,7 +25,7 @@ function wrappedErrorDetail(payload) {
   return detail ? detail.replace(/\s+/g, ' ').trim().slice(0, 200) : '';
 }
 
-async function transcribeAudio(audio, { apiKey, baseUrl, voiceBaseUrl, voiceTranscribeModel }) {
+async function transcribeAudio(audio, { apiKey, voiceApiKey, baseUrl, voiceBaseUrl, voiceTranscribeModel }) {
   if (!(audio instanceof Uint8Array) || audio.length === 0) {
     throw new Error('没有录到声音，请再试一次。');
   }
@@ -39,7 +39,7 @@ async function transcribeAudio(audio, { apiKey, baseUrl, voiceBaseUrl, voiceTran
 
   const response = await fetch(`${resolveRoot(baseUrl, voiceBaseUrl)}/audio/transcriptions`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${apiKey}` },
+    headers: { authorization: `Bearer ${voiceApiKey || apiKey}` },
     body: form,
     signal: AbortSignal.timeout(60_000)
   });
@@ -60,7 +60,7 @@ async function transcribeAudio(audio, { apiKey, baseUrl, voiceBaseUrl, voiceTran
   return { text };
 }
 
-async function synthesizeSpeech(text, { apiKey, baseUrl, voiceBaseUrl, voiceSpeechModel }) {
+async function synthesizeSpeech(text, { apiKey, voiceApiKey, baseUrl, voiceBaseUrl, voiceSpeechModel }) {
   if (typeof text !== 'string' || !text.trim()) {
     throw new Error('没有需要播报的内容。');
   }
@@ -68,7 +68,7 @@ async function synthesizeSpeech(text, { apiKey, baseUrl, voiceBaseUrl, voiceSpee
   const response = await fetch(`${resolveRoot(baseUrl, voiceBaseUrl)}/audio/speech`, {
     method: 'POST',
     headers: {
-      authorization: `Bearer ${apiKey}`,
+      authorization: `Bearer ${voiceApiKey || apiKey}`,
       'content-type': 'application/json'
     },
     body: JSON.stringify({

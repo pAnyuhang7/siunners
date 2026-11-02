@@ -144,21 +144,35 @@ test('sends voice requests to a custom endpoint when configured', async (context
 });
 
 test('prefers the dedicated voice endpoint over the chat endpoint', async (context) => {
-  const urls = [];
-  context.mock.method(globalThis, 'fetch', async (url) => {
-    urls.push(String(url));
+  const requests = [];
+  context.mock.method(globalThis, 'fetch', async (url, init) => {
+    requests.push({ url: String(url), authorization: init.headers.authorization });
     if (String(url).endsWith('/audio/transcriptions')) return jsonResponse({ text: '你好' });
     return { ok: true, status: 200, arrayBuffer: async () => Uint8Array.from([1]).buffer };
   });
 
   const credentials = {
-    apiKey: 'test-key',
+    apiKey: 'chat-key',
     voiceApiKey: 'voice-key',
     baseUrl: 'https://chat.example.com/v1',
     voiceBaseUrl: 'https://voice.example.com/v1'
   };
   await transcribeAudio(new Uint8Array([1]), credentials);
-  assert.equal(urls[0], 'https://voice.example.com/v1/audio/transcriptions');
+  await synthesizeSpeech('你好', credentials);
+  assert.equal(requests[0].url, 'https://voice.example.com/v1/audio/transcriptions');
+  assert.equal(requests[0].authorization, 'Bearer voice-key');
+  assert.equal(requests[1].authorization, 'Bearer voice-key');
+});
+
+test('falls back to the chat key when no voice key is configured', async (context) => {
+  let authorization;
+  context.mock.method(globalThis, 'fetch', async (_url, init) => {
+    authorization = init.headers.authorization;
+    return jsonResponse({ text: '你好' });
+  });
+
+  await transcribeAudio(new Uint8Array([1]), { apiKey: 'chat-key' });
+  assert.equal(authorization, 'Bearer chat-key');
 });
 
 test('uses the configured voice model names when provided', async (context) => {
